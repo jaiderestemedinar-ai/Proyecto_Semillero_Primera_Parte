@@ -1,0 +1,3 @@
+# Módulos XBee
+
+XBees esperando a configurar...
