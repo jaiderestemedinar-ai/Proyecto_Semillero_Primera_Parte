@@ -28,4 +28,4 @@ Saber que da 4320 clicks no sirve de nada si no sabemos cuánto avanzó el robot
 
 Ahora, la ecuación para conocer la "Resolución Lineal" (cuántos milímetros avanza el robot por cada click que recibe el PIC):
 
-                                                             ![ecuacion](ecuacion.png)
+![ecuacion](ecuacion.png)
