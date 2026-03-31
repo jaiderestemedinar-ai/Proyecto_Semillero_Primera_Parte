@@ -31,3 +31,14 @@ Ahora, la ecuación para conocer la "Resolución Lineal" (cuántos milímetros a
 <p align="center">
   <img src="ecuacion.png" alt="Ecuación de Resolución Lineal">
 </p>
+
+Conclusión de diseño: Tu PIC es capaz de detectar cuando el carro avanza apenas $4$ centésimas de milímetro. Es una precisión de grado industrial.
+
+# 4. Pruebas de Respuesta en Lazo Abierto (Los descubrimientos)
+
+Hicimos una prueba real inyectando PWM (energía) directamente al motor aislado y graficamos los resultados. Encontramos dos fenómenos físicos cruciales que justifican por qué tu tesis necesita teoría de control avanzada:
+1. La Zona Muerta (Fricción Estática): Descubrimos que si mandamos un PWM bajo (ej. de 0 a 80 de los 255 posibles), el motor "llora" pero no se mueve. El voltaje es insuficiente para vencer la fricción interna de los 90 engranajes de la caja reductora. El motor necesitó un "empujón" mínimo de = PWM  100 para empezar a girar.
+
+2. La Asimetría Mecánica: Observamos que el motor no se comporta igual hacia adelante que hacia atrás. Aplicando la misma energía (PWM  115), el motor giró más rápido en reversa que hacia adelante debido a diferencias de fricción en la construcción física del hardware.
+
+Esto demostró empíricamente que no podemos controlar el robot simplemente adivinando un valor de PWM.
