@@ -2,7 +2,7 @@
 
 Este documento detalla el análisis físico, la corrección de especificaciones de fábrica y la formulación matemática de los actuadores principales utilizados en el chasis omnidireccional del Proyecto Semillero . Comprender la verdadera naturaleza de estos motores fue el primer paso crítico para diseñar el sistema de control PID del que se hablará en otro apartado.
 
-1. El Conflicto de la Etiqueta: Especificaciones y como venian en realidad
+# 1. El Conflicto de la Etiqueta: Especificaciones y como venian en realidad
 El chasis está impulsado por 4 motores reductores DC modelo GM37-520. Según la etiqueta del fabricante pegada en la carcasa, las especificaciones dictaban:
 
 ![Descripción de la foto para el sistema](Motor_Mecanum.jpg)
@@ -15,7 +15,7 @@ Caja Reductora (Gear Ratio): 1:90
 
 Encoder: 12 PPR (Pulsos Por Revolución) / AB Phase (Cuadratura).
 
-1.1. La Prueba Empírica: Descubriendo los 300 RPM
+# 1.1. La Prueba Empírica: Descubriendo los 300 RPM
 Durante las fases iniciales de pruebas a lazo abierto (inyectando 12V directos mediante PWM al 100%), observé que el chasis se movía a una velocidad inusualmente alta para ser de "110 RPM".
 
 Al medir la velocidad real con el microcontrolador, descubrí que los motores alcanzaban ~300 RPM en vacío, casi el triple de lo que indicaba la etiqueta.
