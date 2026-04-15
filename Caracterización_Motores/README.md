@@ -28,55 +28,76 @@ Conclusión : Los motores fueron ensamblados o etiquetados incorrectamente en f�
 Aquí tambien queda en evidencia el codigo empleado para saber los RPM por individual de cada motor:
 
 /*
- * CÓDIGO : Prueba de RPM en vacio al maximo PWM 255 Constante
+ * =======================================================================
+ * PRUEBA EMPÍRICA: CARACTERIZACIÓN DE VELOCIDAD TERMINAL (LAZO ABIERTO)
  * Microcontrolador: PIC18F45K22 a 16MHz
- * Motor: Adelante (IN1=1, IN2=0) a PWM 255 Constante
+ * Objetivo: Medir RPM máximas reales inyectando PWM al 100% (255)
+ * =======================================================================
  */
+
 #include <xc.h>
 #include <stdint.h>
 #include <stdio.h>
 
+// Configuración de Fusibles: Oscilador Interno, Watchdog OFF, LVP OFF
 #pragma config FOSC = INTIO67, WDTEN = OFF, LVP = OFF, MCLRE = INTMCLR  
 #define _XTAL_FREQ 16000000     
-// --- VARIABLES DEL ENCODER Y VELOCIDAD ---
+
+// --- VARIABLES GLOBALES (ODOMETRÍA) ---
 volatile long contador_encoder = 0; 
 long posicion_anterior = 0;
 volatile float rpm_actual = 0.0;
 volatile char flag_muestreo = 0;
 volatile char ultimo_estado_A = 0;
 
+// ==========================================
+// CONFIGURACIÓN DE MÓDULOS DE HARDWARE
+// ==========================================
 void UART1_Init(void) {
-    SPBRG1 = 25; TRISCbits.TRISC6 = 0; TRISCbits.TRISC7 = 1; 
-    TXSTA1bits.SYNC = 0; TXSTA1bits.BRGH = 0; RCSTA1bits.SPEN = 1; TXSTA1bits.TXEN = 1; RCSTA1bits.CREN = 1; 
+    SPBRG1 = 25; // 9600 Baudios
+    TRISCbits.TRISC6 = 0; 
+    TRISCbits.TRISC7 = 1; 
+    TXSTA1bits.SYNC = 0; 
+    TXSTA1bits.BRGH = 0; 
+    RCSTA1bits.SPEN = 1; 
+    TXSTA1bits.TXEN = 1; 
+    RCSTA1bits.CREN = 1; 
 }
 
 void UART1_Print(const char* text) { 
-    for(int i=0; text[i] != '\0'; i++) { while(!TXSTA1bits.TRMT); TXREG1 = text[i]; } 
+    for(int i=0; text[i] != '\0'; i++) { 
+        while(!TXSTA1bits.TRMT); 
+        TXREG1 = text[i]; 
+    } 
 }
 
 void Timers_Init(void) {
     T1CON = 0x31;               // 16-bit, Prescaler 1:8, Timer1 ON
-    TMR1H = 0x0B; TMR1L = 0xDC; // 50ms a 16MHz
+    TMR1H = 0x9E; TMR1L = 0x58; // Carga para desbordamiento exacto a 50ms (16MHz)
     PIE1bits.TMR1IE = 1;    
 }
 
 void PWM_Init(void) {
-    TRISCbits.TRISC2 = 0;   
-    PR2 = 255;              
-    CCP1CON = 0x0C;         
-    T2CON = 0x05;           
-    CCPR1L = 0;             
+    TRISCbits.TRISC2 = 0;   // Pin CCP1 como salida 
+    PR2 = 255;              // Periodo PWM
+    CCP1CON = 0x0C;         // Modo PWM
+    T2CON = 0x05;           // Timer2 ON, Prescaler 1:4
+    CCPR1L = 0;             // Duty Cycle inicial (0%)
 }
-// INTERRUPCIONES
+
+// ==========================================
+// RUTINA DE INTERRUPCIONES (NÚCLEO CRÍTICO)
+// ==========================================
 void __interrupt() ISR(void) {
     
-    // 1. LECTURA DEL ENCODER
+    // 1. LECTURA DEL ENCODER (Interrupt On Change)
     if(INTCONbits.RBIF) {
         char estado_A = PORTBbits.RB4; 
         char estado_B = PORTBbits.RB5; 
         
+        // Detección de flanco de subida en Canal A
         if(estado_A == 1 && ultimo_estado_A == 0) {
-            // Parche de Inversión de Fase (Mantenido para lectura correcta)
+            // Lectura de cuadratura (Dirección)
             if(estado_B == 0) {
                 contador_encoder--; 
             } else {
@@ -84,45 +105,74 @@ void __interrupt() ISR(void) {
             }
         }
         ultimo_estado_A = estado_A;
-        char dummy = PORTB; INTCONbits.RBIF = 0;  
+        
+        char dummy = PORTB; // Lectura para limpiar mismatch
+        INTCONbits.RBIF = 0;  
     }
 
-    // 2. CÁLCULO DE VELOCIDAD (Cada 50ms)
+    // 2. CÁLCULO DE VELOCIDAD (Timer1: Cada 50ms)
     if(PIR1bits.TMR1IF) {
         long delta_clicks = contador_encoder - posicion_anterior;
         posicion_anterior = contador_encoder;
-        // Multiplicador 1.111 validado empíricamente en laboratorio
-        rpm_actual = (float)delta_clicks * 1.111; 
         
-        // =====================================================
-        // PRUEBA DE VELOCIDAD TERMINAL: IGNORAR PID, FORZAR MÁXIMO
-        // =====================================================
-        CCPR1L = 255; 
+        // Multiplicador 1.11 validado matemáticamente (1080 PPR @ 50ms)
+        rpm_actual = (float)delta_clicks * 1.11; 
+        
+        // ---------------------------------------------------------
+        // PRUEBA DE VELOCIDAD TERMINAL: INYECCIÓN DIRECTA DE ENERGÍA
+        // ---------------------------------------------------------
+        CCPR1L = 255; // Forzar PWM al 100% (Ignorando PID)
         
         flag_muestreo = 1;  
-        TMR1H = 0x0B; TMR1L = 0xDC; // Recargar Timer
+        TMR1H = 0x9E; TMR1L = 0x58; // Recargar Timer para próximos 50ms
         PIR1bits.TMR1IF = 0; 
     }
 }
+
+// ==========================================
+// BUCLE PRINCIPAL
+// ==========================================
 void main(void) {
-    OSCCON = 0x72; 
-    ANSELB = 0; TRISBbits.TRISB0 = 0; TRISBbits.TRISB1 = 0; 
-    TRISBbits.TRISB4 = 1; TRISBbits.TRISB5 = 1; 
+    // Configuración de Reloj y Pines
+    OSCCON = 0x72; // 16 MHz
+    ANSELB = 0; 
     
-    LATBbits.LATB0 = 1; LATBbits.LATB1 = 0; // Dirección: Adelante
+    // Pines de Dirección (IN1, IN2)
+    TRISBbits.TRISB0 = 0; 
+    TRISBbits.TRISB1 = 0; 
     
-    UART1_Init(); PWM_Init(); Timers_Init();
+    // Pines del Encoder (Canal A, Canal B)
+    TRISBbits.TRISB4 = 1; 
+    TRISBbits.TRISB5 = 1; 
     
-    IOCBbits.IOCB4 = 1; char dummy = PORTB; INTCONbits.RBIF = 0;  
-    INTCONbits.RBIE = 1; INTCONbits.PEIE = 1; INTCONbits.GIE = 1;   
+    // Forzar dirección: Adelante
+    LATBbits.LATB0 = 1; 
+    LATBbits.LATB1 = 0; 
+    
+    // Inicializar Periféricos
+    UART1_Init(); 
+    PWM_Init(); 
+    Timers_Init();
+    
+    // Configurar Interrupciones
+    IOCBbits.IOCB4 = 1; // Habilitar IOC en RB4 (Canal A)
+    char dummy = PORTB; 
+    INTCONbits.RBIF = 0;  
+    INTCONbits.RBIE = 1; // Globales de Periféricos
+    INTCONbits.PEIE = 1; 
+    INTCONbits.GIE = 1;   
     
     char mensaje[60];
-    UART1_Print("\n--- PRUEBA DE VELOCIDAD TERMINAL (MAX RPM) ---\n");
-    UART1_Print("Advertencia: Inyectando PWM 255 constante...\n\n");
+    
+    // Retardo inicial de seguridad
+    __delay_ms(1000);
+    UART1_Print("\n--- PRUEBA DE VELOCIDAD TERMINAL (MAX RPM) ---\r\n");
+    UART1_Print("Advertencia: Inyectando PWM 255 constante...\r\n\n");
 
     while(1) {
+        // Imprimir telemetría solo cuando hay nuevos datos (Cada 50ms)
         if(flag_muestreo) {
-            sprintf(mensaje, "Real: %.1f RPM | PWM: 255 (AL MAXIMO)\n", (double)rpm_actual);
+            sprintf(mensaje, "Real: %.1f RPM | PWM: 255 (AL MAXIMO)\r\n", (double)rpm_actual);
             UART1_Print(mensaje);
             flag_muestreo = 0; 
         }
