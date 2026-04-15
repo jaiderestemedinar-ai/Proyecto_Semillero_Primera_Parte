@@ -39,7 +39,7 @@ Para solucionar este conflicto de hardware, se implementó el siguiente acondici
 
 Se utilizaron Módulos Adaptadores / Shields para XBee que incorporan reguladores de tensión (LDO a 3.3V) integrados(WS-11293).
 
-![adaptador-xbee](Adaptador_Xbee.png)
+![adaptador-xbee](Adaptador_Xbee.jpg)
 
 
 Los adaptadores incluyen Level Shifters (conversores de nivel lógico) en las líneas TX y RX, permitiendo que la señal de 3.3V del XBee sea leída correctamente por el PIC, y que el pulso de 5V del PIC se reduzca de forma segura a 3.3V antes de entrar al radio.
