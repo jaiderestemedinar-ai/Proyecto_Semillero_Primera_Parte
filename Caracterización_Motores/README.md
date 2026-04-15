@@ -1,4 +1,4 @@
-## ⚙️ VOLUMEN 1: Caracterización de Motores GM37 y Encoders Magnéticos
+### ⚙️ VOLUMEN 1: Caracterización de Motores GM37 y Encoders Magnéticos
 
 Este documento detalla el análisis físico, la corrección de especificaciones de fábrica y la formulación matemática de los actuadores principales utilizados en el chasis omnidireccional del Proyecto Semillero . Comprender la verdadera naturaleza de estos motores fue el primer paso crítico para diseñar el sistema de control PID del que se hablará en otro apartado.
 
@@ -14,6 +14,7 @@ Velocidad Impresa: 110 RPM
 Caja Reductora (Gear Ratio): 1:90
 
 Encoder: 12 PPR (Pulsos Por Revolución) / AB Phase (Cuadratura).
+
 
 # 1.1. La Prueba Empírica: Descubriendo los 300 RPM
 Durante las fases iniciales de pruebas a lazo abierto (inyectando 12V directos mediante PWM al 100%), observé que el chasis se movía a una velocidad inusualmente alta para ser de "110 RPM".
@@ -31,21 +32,18 @@ Aquí tambien queda en evidencia el codigo empleado para saber los RPM por indiv
  * Microcontrolador: PIC18F45K22 a 16MHz
  * Motor: Adelante (IN1=1, IN2=0) a PWM 255 Constante
  */
-
 #include <xc.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #pragma config FOSC = INTIO67, WDTEN = OFF, LVP = OFF, MCLRE = INTMCLR  
 #define _XTAL_FREQ 16000000     
-
 // --- VARIABLES DEL ENCODER Y VELOCIDAD ---
 volatile long contador_encoder = 0; 
 long posicion_anterior = 0;
 volatile float rpm_actual = 0.0;
 volatile char flag_muestreo = 0;
 volatile char ultimo_estado_A = 0;
-
 // ==========================================
 // CONFIGURACIÓN DE PERIFÉRICOS
 // ==========================================
@@ -140,15 +138,16 @@ void main(void) {
     }
 }
 
-2. Sistema de Odometría: Encoders y PPR
+
+## 2. Sistema de Odometría: Encoders y PPR
 Para medir la velocidad y dirección real, cada motor cuenta con un Encoder Magnético de Efecto Hall en la cola del motor principal (antes de los engranajes reductores).
 
-2.1. Entendiendo el "12 PPR" de la Etiqueta
+## 2.1. Entendiendo el "12 PPR" de la Etiqueta
 La etiqueta menciona "12 PPR / AB Phase". Esto significa que el disco magnético pegado al motor interno genera 12 pulsos eléctricos por cada vuelta que da el motor pequeño.
 
 Sin embargo, no me interesa cuántas vueltas da el motor interno; me interesa cuántas vueltas da la llanta (el eje de salida).
 
-2.2. Cálculo del PPR Real (Eje de Salida)
+## 2.2. Cálculo del PPR Real (Eje de Salida)
 Aquí es donde entra la relación de la caja reductora (1:90). Esto significa que el motor interno debe girar 90 veces para que el eje principal (la llanta) complete 1 sola vuelta.
 
 Por lo tanto, la resolución real del sistema para la llanta se calcula multiplicando los pulsos internos por la reducción:
@@ -161,15 +160,15 @@ PPR_Total (Llantas) = 12 * 90 = 1080 Pulsos Por Revolución
 
 ¿Qué significa esto? Que por cada vuelta completa de la llanta sobre el piso, el PIC18F45K22 recibe exactamente 1080 interrupciones eléctricas. Es una resolución altísima que permite un control muy fino a bajas velocidades.
 
-3. Matemática del Microcontrolador: La Fórmula del 1.11
+## 3. Matemática del Microcontrolador: La Fórmula del 1.11
 Para que el control PID funcione, debe comparar el "Setpoint" (la velocidad que deseamos) con la "Velocidad Real". Ambas deben estar en la misma unidad de ingeniería: Revoluciones Por Minuto (RPM).
 
-3.1. El Problema del Tiempo
+## 3.1. El Problema del Tiempo
 El PIC18F45K22 utiliza un Timer que interrumpe el programa exactamente cada 50 milisegundos (ms). En esos 50ms, el PIC cuenta cuántos pulsos generó la llanta. A esa cantidad de pulsos le llamamos Delta.
 
 El reto es convertir rápidamente esa variable Delta (Pulsos en 50ms) a RPM sin ahogar al procesador de 8 bits con operaciones de punto flotante o divisiones complejas.
 
-3.2. Desmenuzando la Fórmula de Conversión
+## 3.2. Desmenuzando la Fórmula de Conversión
 Quiero llegar de: [Pulsos / 50ms] a [Vueltas / Minuto].
 
 Paso 1: Convertir Pulsos a Vueltas (Revoluciones)
