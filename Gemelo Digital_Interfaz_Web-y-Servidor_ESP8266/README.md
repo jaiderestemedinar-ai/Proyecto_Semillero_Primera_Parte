@@ -103,3 +103,40 @@ Finalmente, se integró un lienzo HTML5 (<canvas>) superpuesto a la vista 3D par
 La función drawRadar() procesa los paquetes JSON {"a":40,"d":25} convirtiendo coordenadas polares (Ángulo y Distancia) en coordenadas cartesianas (X, Y) mediante trigonometría (Math.cos y Math.sin), dibujando la posición de los obstáculos en tiempo real y cambiando su color a rojo si infringen el umbral de seguridad de 7cm.
 
 ![radar](deteccion_de_objeto.png)
+
+# 🌐 VOLUMEN 5.1: Despliegue Local y Análisis del Motor Gráfico (HMI)
+
+Este anexo profundiza en las restricciones de seguridad de los navegadores web modernos, la necesidad de un servidor local para la carga de modelos 3D y desglosa matemáticamente la renderización del radar ultrasónico en el Canvas HTML5.
+
+## 1. El Problema del CORS y el Servidor Local Python
+
+Para abrir la interfaz web en una computadora, no basta con hacer "doble clic" sobre el archivo `index.html`. Si se intenta esto, el navegador abrirá el archivo utilizando el protocolo local de archivos (`file:///C:/...`), lo cual provocará que el Gemelo Digital (el archivo URDF) no se cargue en la pantalla, mostrando un error en la consola.
+
+**¿Por qué sucede esto?**
+Los navegadores modernos implementan una estricta política de seguridad llamada **CORS (Cross-Origin Resource Sharing)**. Esta política prohíbe que el código JavaScript (como la librería `urdf-loader` o `Three.js`) haga peticiones para leer otros archivos locales alojados en el disco duro. Es una medida crítica para evitar que páginas web maliciosas roben información de la computadora del usuario.
+
+**La Solución: `python -m http.server 8000`**
+Para engañar al navegador y que trate nuestros archivos del proyecto como si fueran una página web real alojada en internet, utilizamos Python. Al abrir la terminal (cmd o PowerShell) en la carpeta del proyecto y ejecutar este comando, Python levanta un pequeño servidor web de desarrollo en el puerto 8000.
+* Al acceder a `http://localhost:8000` en el navegador, la petición de red viaja por el protocolo estándar HTTP.
+* El navegador confía en este origen (Localhost) y permite que los scripts descarguen, lean y parseen el archivo `carrosemillero2.urdf` y sus texturas asociadas sin bloqueos de seguridad.
+
+## 2. Análisis Profundo del Radar Ultrasónico (Canvas 2D)
+
+El visualizador del radar en la interfaz no es una simple animación pregrabada ni un video; es una representación gráfica dinámica calculada en tiempo real. Traduce coordenadas polares (recibidas vía JSON) a coordenadas cartesianas en la cuadrícula de píxeles del monitor.
+
+### 2.1. Memoria de Barrido (Persistencia de Visión)
+El sistema no dibuja solo lo que ve en un instante dado, sino que tiene "memoria". Utiliza un arreglo (Array) de 181 posiciones matemáticas (`radarData[181]`) que representa cada grado posible del servo motor (de 0° a 180°). 
+Cuando llega un paquete de telemetría JSON, por ejemplo `{"a":40,"d":25}`, el sistema almacena la distancia `25` exactamente en el índice `40` del arreglo. Al dibujar, el código recorre los 181 grados, pintando los ecos acústicos anteriores y generando un efecto de "rastro de fósforo" clásico de los radares industriales.
+
+### 2.2. Matemática de Transformación Espacial
+El área de dibujo (Canvas) es un rectángulo estricto de 300x150 píxeles, donde el origen físico del radar se ubica en el centro-inferior. Para pintar un obstáculo en pantalla, el algoritmo convierte las coordenadas polares recibidas del PIC1 (Distancia radial **R** y Ángulo **θ**) a coordenadas cartesianas **(X, Y)** mediante trigonometría computacional:
+
+`X = Cx + R * cos(180° - θ)`
+`Y = Cy - R * sin(180° - θ)`
+
+* Donde **Cx** y **Cy** representan las coordenadas del punto central de origen del radar en el Canvas.
+* **R** es la distancia escalada (donde 50cm reales del HC-SR04 equivalen al 100% de la altura visual del Canvas).
+* **θ** (Theta) es el ángulo del servo, previamente convertido a radianes.
+
+### 2.3. Lógica de Umbral Crítico (Collision Warning)
+Durante el ciclo de renderizado, la interfaz evalúa condicionalmente la distancia de cada punto detectado almacenado en memoria. Si la distancia matemática es **<= 7** (7 centímetros o menos), el motor cambia el estilo de llenado (`fillStyle`) del punto de verde neón (`#00ff00`) a rojo alerta (`#ff0000`). Esto traslada la lógica de exclusión que ocurre en el hardware del chasis (LED físico) directamente a la consciencia visual del operador en la interfaz.
