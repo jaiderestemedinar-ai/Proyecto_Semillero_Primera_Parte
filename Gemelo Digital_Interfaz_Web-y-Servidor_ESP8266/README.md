@@ -49,6 +49,8 @@ btn.addEventListener('pointerleave', onEnd);
 ## 3. El Gemelo Digital (URDF + Three.js)
 La característica más avanzada de la Interfaz Web es la representación virtual del chasis sincronizada en tiempo real. Esto se logró importando una librería gráfica y un parseador de modelos robóticos.
 
+![urdf en la interfaz](urdf-interfaz-ejemplo.png)
+
 ## 3.1. ¿Cómo se renderiza el URDF?
 Se importó Three.js (un motor 3D de WebGL) junto con urdf-loader.
 El archivo carrosemillero2.urdf (Unified Robot Description Format) contiene la cinemática, los pesos y las mallas visuales de los enlaces (chasis, brazos, rodillos) diseñadas originalmente en SolidWorks.
@@ -97,3 +99,5 @@ Cambiar la línea loader.load('carrosemillero2.urdf', ...) por el nuevo nombre d
 ## 4. Visualización Sensorial (Radar Canvas)
 Finalmente, se integró un lienzo HTML5 (<canvas>) superpuesto a la vista 3D para renderizar el radar ultrasónico.
 La función drawRadar() procesa los paquetes JSON {"a":40,"d":25} convirtiendo coordenadas polares (Ángulo y Distancia) en coordenadas cartesianas (X, Y) mediante trigonometría (Math.cos y Math.sin), dibujando la posición de los obstáculos en tiempo real y cambiando su color a rojo si infringen el umbral de seguridad de 7cm.
+
+![radar](deteccion_de_objeto.png)
