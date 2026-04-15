@@ -49,7 +49,7 @@ btn.addEventListener('pointerleave', onEnd);
 ## 3. El Gemelo Digital (URDF + Three.js)
 La característica más avanzada de la Interfaz Web es la representación virtual del chasis sincronizada en tiempo real. Esto se logró importando una librería gráfica y un parseador de modelos robóticos.
 
-
+![Prueba en serial monitor](urdf_en_la_interfaz.png)
 
 ## 3.1. ¿Cómo se renderiza el URDF?
 Se importó Three.js (un motor 3D de WebGL) junto con urdf-loader.
